@@ -1,0 +1,120 @@
+configuration:
+  dependencies:
+  - "mvn://com.walmartlabs.concord.plugins.basic:crypto-tasks:0.66.1-SNAPSHOT"
+  - "mvn://com.walmartlabs.concord.plugins.basic:smtp-tasks:0.66.1-SNAPSHOT"
+  - "mvn://com.walmartlabs.concord.plugins:jira-task:0.41.1-SNAPSHOT"
+
+  arguments:
+    smtpParams:
+      host: smtp-gw1.wal-mart.com
+      port: 25
+    inventoryName : ${txId}_inventory
+    adminRepoId : c5ff0038-46d1-11e8-9cc4-0242ac110003
+    baseUrl: http://localhost:8001/api/v1/
+    passwordKey: u+lZMQVnqd8u+VWguVklLQ==
+    jiraConfig:
+      jiraUrl: "https://confiz.atlassian.net"
+      jiraUid: "humna.naeem@confiz.com"
+      jiraPwd: "g00dbuddy"
+      jiraProjectKey: "CON"
+      reporter: "humna.naeem"
+      jiraSummary: "My Summary"
+      jiraDescription: "We should really fix this"
+      jiraRequestorUid: "humna.naeem"
+      jiraIssueTypeId: 10900
+    userRequestForm:
+      apiBaseUrl: http://localhost:8001/api/v1/
+
+    
+flows:
+  default:
+  - log: ${jiraConfig}
+  - form: userRequestForm
+  - set:
+      userRequestForm:
+          jiraIssueId: ${jiraConfig.jiraIssueKey}
+  
+  - CreateUserDataInvetory
+  - if: ${inventorysResponse.success}
+    then:
+    - AddFormDataInInventory
+    - if: ${inventoryDataResponse.success}
+      then:
+      - if: ${userRequestForm.requestType == "create"}
+        then:
+        - set:
+            jiraConfig:
+                 jiraSummary: "${initiator.username} request for create organization"
+                 jiraDescription: "${initiator.username} request for ${userRequestForm.org} organization creation with following users ${userRequestForm.userlist}"
+        else:
+        - set:
+             jiraConfig:
+                 jiraSummary: "${initiator.username} request for join organization"
+                 jiraDescription: "${initiator.username} request for ${userRequestForm.selectedOrg} join organization"
+      - log: ${jira.create(context,jiraConfig)}
+      - EmailToAdmin
+    else:
+    - ErrorEmailToUser
+     
+    
+  AddFormDataInInventory:
+    - task: http
+      in:
+        method: POST
+        auth:
+          basic:
+            username: ${initiator.username}
+            password: q1
+        body:
+                orgName: default
+                inventoryName: ${inventoryName}
+                data: ${userRequestForm}
+        url: ${baseUrl}org/Default/inventory/${inventoryName}/data/itemPath:${inventoryName}
+        request: json
+        response: json
+        out: inventoryDataResponse
+  
+
+  CreateUserDataInvetory:
+    - task: http
+      in:
+          method: POST
+          auth:
+            basic:
+                username: ${initiator.username}
+                password: q1
+          body:
+              orgName: default
+              name: ${inventoryName}
+          url: ${baseUrl}org/Default/inventory
+          request: json
+          response: json
+          out: inventorysResponse
+    - log: ${inventorysResponse}
+    
+  ErrorEmailToUser:
+    - task: smtp
+      in:
+         mail:
+          from: humna.naeem@confiz.com
+          to: humna.naeem@confiz.com
+          subject: Request from user ${initiator.username}
+          template: error.moustache
+  
+  EmailToAdmin:
+    - task: smtp
+      in:
+        mail:
+         from: humna.naeem@confiz.com
+         to: humna.naeem@confiz.com
+         subject: Request from user ${initiator.username}
+         template: success.moustache
+         
+forms:
+  userRequestForm:
+  - user: { label: "User name", type: "string"  , value : "${initiator.username}" }
+  - requestType: { label: "Select Request", type: "string", allow: ["create", "join"] }
+  - org: { label: "Organization name", type: "string"   }
+  - userlist: { label: "User List", type: "string"  , value : "enter comma seprated user list " }
+  - selectedOrg: { label: "Select Organization", type: "string" }
+  - apiBaseUrl: { label: "Select Organization", type: "string" }

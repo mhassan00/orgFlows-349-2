@@ -1,0 +1,8 @@
+Hi,
+
+User request for {{userRequestForm.requestType}}
+
+[Please click here for process request]({{baseUrl}/org/Default/project/{{projectInfo.projectName}}/repo/projectInfo.repoName/start/default)
+
+
+Regards
