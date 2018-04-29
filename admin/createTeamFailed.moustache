@@ -1,5 +1,5 @@
-Hi
+Hi, {{dataContent.user}}
 
-user request for create organization {{org}} failed please try again later
+Your request for create organization {{dataContent.org}} failed please try again later
 
 Regards

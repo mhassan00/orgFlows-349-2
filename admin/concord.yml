@@ -10,10 +10,10 @@ configuration:
       port: 25
     emailText : error.moustache
     baseUrl: http://localhost:8001/api/v1/
-    senderEmail: humna.naeem@confiz.com
     TeamUserList: "[]"
     userName: cn=myuser
     passwordKey: u+lZMQVnqd8u+VWguVklLQ==
+    adminEmail: "sender email id"
     jiraConfig:
       jiraUrl: "https://confiz.atlassian.net"
       jiraUid: "humna.naeem@confiz.com"
@@ -25,10 +25,7 @@ configuration:
       jiraTransitionId: 2
       jiraTransitionComment: "Request rejected from the admin"
       
-      
-    
-    
-
+  
 flows:
   default:
   - log: ${requestInfo}
@@ -37,37 +34,32 @@ flows:
        method: GET
        auth:
         basic:
-          username: cn=myuser
-          password: q1
-       url: ${baseUrl}org/default/inventory/${requestInfo.query.inventoryName}/data/itemPath
+          username: ${userName}
+          password: ${crypto.decryptString(passwordKey)}
+       url: ${baseUrl}org/Default/inventory/${requestInfo.query.inventoryName}/data/itemPath:${requestInfo.query.inventoryName}
        request: json
        response: json
        out: inventoryResponseData
-  - log: ${inventoryResponseData}
-  - set:
-      jiraConfig:
-          jiraIssueKey: ${inventoryResponseData.jiraIssueKey}
-  - task: http
-    in:
-      method: POST
-      auth:
-        basic:
-          username: cn=myuser
-          password: q1
-      url: ${baseUrl}user
-      body:
-        username : ${initiator.username}
-      request: json
-      response: json
-      out: rsp
-  - log: ${rsp}
-  - if: ${rsp.success}
+    
+
+  - if: ${inventoryResponseData.success}
     then:
-    - if: ${inventoryResponseData.requestType == "create"}
+    - script: groovy
+      body: |
+        import groovy.json.JsonSlurper
+     	def content = inventoryResponseData.content
+   	Object[] keys = content.keySet().toArray();
+   	def list = content.get(keys[0]).data;
+	execution.setVariable("dataContent",list);
+    - log: ${dataContent}
+    - set:
+        jiraConfig.jiraIssueKey: ${dataContent.jiraIssueId}
+	requesterEmail:  ${dataContent.email}
+    - if: ${dataContent.requestType == "create"}
       then:
       - CreateOrganizationFlow
 
-    - if: ${inventoryResponseData.requestType == "join"}
+    - if: ${dataContent.requestType == "join"}
       then:
       - JoinOrganizationRequest
   - Email
@@ -77,20 +69,20 @@ flows:
   CreateOrganizationFlow:
       - form: adminformCreateOrganization
       - set:
-           emailText: "reject.moustache"
+          emailText: "reject.moustache"
       - if: ${adminformCreateOrganization.accept == "accept"}
         then:
         - set:
-            emailText: "createTeamFailes.moustache"
+            emailText: "createTeamFailed.moustache"
         - task: http
           in:
             method: POST
             auth:
               basic:
-                username: cn=myuser
-                password: q1
+		  username: ${userName}
+		  password: ${crypto.decryptString(passwordKey)}
             body:
-              name: ${inventoryResponseData.org}
+              name: ${dataContent.org}
             url: ${baseUrl}org
             request: json
             response: json
@@ -102,7 +94,7 @@ flows:
             body: |
               import groovy.json.JsonSlurper
               import groovy.json.JsonBuilder
-              def userArray = inventoryResponseData.userlist.split(',')
+              def userArray = dataContent.userlist.split(',')
 
               def addTeamUserlist = "["
               for (String user : userArray) {
@@ -120,10 +112,10 @@ flows:
               method: PUT
               auth:
                 basic:
-                  username: cn=myuser
-                  password: q1
+		  username: ${userName}
+		  password: ${crypto.decryptString(passwordKey)}
               body: ${TeamUserList}
-              url: ${baseUrl}org/${inventoryResponseData.org}/team/default/users
+              url: ${baseUrl}org/${dataContent.org}/team/default/users
               response: json
               request: json
               out: addUserTeamResponse
@@ -140,49 +132,52 @@ flows:
       - if: ${adminformJoinOrganization.accept == "accept"}
         then:
         - set:
-            emailText: "joinTeamFailes.moustache"
+            emailText: "joinTeamFailed.moustache"
         - task: http
           in:
             method: PUT
             auth:
               basic:
-                username: cn=myuser
-                password: q1
-            body: '[{"username":"${requestedUser}"}]'
-            url: ${baseUrl}/org/Default/team/${inventoryResponseData.selectedOrg}/users
+		  username: ${userName}
+		  password: ${crypto.decryptString(passwordKey)}
+            body: '[{"username":"${dataContent.user}"}]'
+            url: ${baseUrl}org/Default/team/${dataContent.selectedOrg}/users
             response: json
             request: json
             out: addUserTeamResponse
           
         - if: ${addUserTeamResponse.success}
           then:
-          - set:
+            - set:
                 emailText: "joinTeamSuccess.moustache"
-          - set:
-        	jiraConfig:
-                     jiraTransitionComment: "request process successfully"
+                jiraConfig.jiraTransitionComment: "Request process successfully"
 
   Email:
+    - if: ${emailText == "error.moustache"}
+      then:
+      - set:
+         requesterEmail: initiator.attributes.mail
+
     - task: smtp
       in:
         mail:
-         from: ${senderEmail}
-         to: ${senderEmail}
+         from: ${adminEmail}
+         to: ${requesterEmail}
          subject: "Request Process response"
          template: ${emailText}
     - log: ${jira.transition(context, jiraConfig)}
   
 forms:
    adminformJoinOrganization:
-   - requesterName: { label: "Requester Name", type: "string" ,value : "${requestedUser}" } 
-   - orgname: { label: "Organization Name", type: "string" ,value : "${selectedOrg}" } 
+   - requesterName: { label: "Requester Name", type: "string" ,value : "${dataContent.user}" } 
+   - orgname: { label: "Organization Name", type: "string" ,value : "${dataContent.selectedOrg}" } 
    - accept: { label: "Request Accept", type: "string" ,value : "accept" }  
 
    adminformCreateOrganization:
-   - requesterName: { label: "Requester Name", type: "string" ,value : "${requestedUser}" } 
-   - orgname: { label: "Organization Name", type: "string" ,value : "${org}" }  
+   - requesterName: { label: "Requester Name", type: "string" ,value : "${dataContent.user}" } 
+   - orgname: { label: "Organization Name", type: "string" ,value : "${dataContent.org}" }  
    - accept: { label: "Request Accept", type: "string" ,value : "accept" }  
-   - userList: { label: "User List", type: "string" ,value : "${userlist}" }   
+   - userList: { label: "User List", type: "string" ,value : "${dataContent.userlist}" }   
 
 
               

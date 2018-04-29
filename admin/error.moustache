@@ -1,4 +1,4 @@
-Hi , ${initiator.username}
+Hi , {{initiator.username}}
 
 Your request failed
 

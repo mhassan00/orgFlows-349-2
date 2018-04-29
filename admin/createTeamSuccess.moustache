@@ -1,7 +1,7 @@
-Hi
+Hi, {{dataContent.user}}
 
-user request for create organization {{org}} processed successfully
+Your request for create organization {{dataContent.org}} processed successfully
 following users added in ist
-{{userlist}}
+{{dataContent.userlist}}
 
 Regards

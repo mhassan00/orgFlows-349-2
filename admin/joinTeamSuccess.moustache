@@ -1,5 +1,5 @@
-Hi {{requestedUser}}
+Hi {{dataContent.user}}
 
-user request for join organization successfully processed
+Your request for join {{dataContent.selectedOrg}} organization successfully processed.
 
 Regards

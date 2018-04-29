@@ -1,0 +1,6 @@
+Hi, {{dataContent.user}}
+
+Your Request for {{dataContent.requestType}} Organization has been rejected.
+Please try again later.
+
+Regards
