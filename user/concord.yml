@@ -12,6 +12,7 @@ configuration:
     adminRepoName : "admin repo name"
     baseUrl: http://localhost:8001/api/v1/
     passwordKey: u+lZMQVnqd8u+VWguVklLQ==
+    adminEmailIds: "admin email Ids"
     username: "cn=mysuer"
     jiraConfig:
       jiraUrl: "https://confiz.atlassian.net"
@@ -21,7 +22,7 @@ configuration:
       jiraRequestorUid: "user name"
       jiraIssueTypeId: 10900
     userRequestForm:
-      apiBaseUrl: http://localhost:8001/api/v1/
+      apiBaseUrl: ${baseUrl}
 
     
 flows:
@@ -92,7 +93,7 @@ flows:
       in:
          mail:
           from: humna.naeem@confiz.com
-          to: humna.naeem@confiz.com
+          to: ${adminEmailIds}
           subject: Request from user ${initiator.username}
           template: error.moustache
   
