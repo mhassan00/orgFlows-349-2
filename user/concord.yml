@@ -9,7 +9,7 @@ configuration:
       host: smtp-gw1.wal-mart.com
       port: 25
     inventoryName : ${txId}_inventory
-    adminRepoId : c5ff0038-46d1-11e8-9cc4-0242ac110003
+    adminRepoName : "admin repo name"
     baseUrl: http://localhost:8001/api/v1/
     passwordKey: u+lZMQVnqd8u+VWguVklLQ==
     username: "cn=mysuer"
