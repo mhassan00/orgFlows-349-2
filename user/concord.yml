@@ -101,8 +101,8 @@ flows:
     - task: smtp
       in:
         mail:
-         from: humna.naeem@confiz.com
-         to: humna.naeem@confiz.com
+         from: ${ initiator.attributes.mail}
+         to: ${adminEmailIds}
          subject: Request from user ${initiator.username}
          template: success.moustache
          
