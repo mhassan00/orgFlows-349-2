@@ -9,7 +9,7 @@ configuration:
       host: smtp-gw1.wal-mart.com
       port: 25
     inventoryName : ${txId}_inventory
-    adminRepoName : "orgFlow_Repo"
+    adminRepoName : "orgFlow_repo"
     baseUrl: http://localhost:8001/api/v1/
     passwordKey: T1GX6KfQ5GbjOZqnnE91Gw==
     adminEmailIds: "muhammad.hassan@confiz.com"
